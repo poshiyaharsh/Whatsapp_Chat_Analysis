@@ -9,8 +9,10 @@ def preprocess(data):
     dates = re.findall(pattern, data)
 
     df = pd.DataFrame({'user_message': messages, 'message_date': dates})
-    # convert message_date type (12-hour format with AM/PM)
-    df['message_date'] = pd.to_datetime(df['message_date'], format='%d/%m/%Y, %I:%M %p - ')
+    # Normalize any special narrow spaces before am/pm to regular spaces
+    df['message_date'] = df['message_date'].str.replace('\u202f', ' ', regex=False)
+    # convert message_date type (12-hour format with AM/PM, 2-digit year)
+    df['message_date'] = pd.to_datetime(df['message_date'], format='%d/%m/%y, %I:%M %p - ')
 
     df.rename(columns={'message_date': 'date'}, inplace=True)
 
