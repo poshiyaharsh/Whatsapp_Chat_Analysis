@@ -65,6 +65,9 @@ venv\Scripts\activate  # on Windows
 pip install -r requirements.txt
 ```
 
+Tested with **Python 3.11–3.13**.  
+Other recent 3.x versions will probably work, but 3.11+ is recommended.
+
 If you don’t have a `requirements.txt`, you can install manually:
 
 ```bash
