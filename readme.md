@@ -86,4 +86,3 @@ Then open the URL shown in the terminal (usually `http://localhost:8501`), uploa
 
 - **Timestamp format**: the app expects 12‑hour timestamps with AM/PM like: `19/08/25, 12:19 pm -`.
 - `stop_hinglish.txt` should stay in the project root so wordcloud / common‑words keep working.
-- `venv/` and `__pycache__/` are already ignored via `.gitignore`.
