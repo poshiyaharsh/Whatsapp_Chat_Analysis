@@ -15,8 +15,16 @@ plt.rcParams.update({
 
 st.sidebar.title("Whatsapp Chat Analyzer")
 
+if "show_analysis" not in st.session_state:
+    st.session_state["show_analysis"] = False
+if "last_analysis_file" not in st.session_state:
+    st.session_state["last_analysis_file"] = None
+
 uploaded_file = st.sidebar.file_uploader("Choose a file")
 if uploaded_file is not None:
+    if st.session_state.get("last_analysis_file") != uploaded_file.name:
+        st.session_state["show_analysis"] = False
+        st.session_state["last_analysis_file"] = uploaded_file.name
     bytes_data = uploaded_file.getvalue()
     data = bytes_data.decode("utf-8")
     df = preprocessor.preprocess(data)
@@ -47,6 +55,9 @@ if uploaded_file is not None:
     selected_user = st.sidebar.selectbox("Show analysis wrt",user_list)
 
     if st.sidebar.button("Show Analysis"):
+        st.session_state["show_analysis"] = True
+
+    if st.session_state["show_analysis"]:
 
         # Stats Area (always on Overview tab)
         num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_user,df)
@@ -130,17 +141,23 @@ if uploaded_file is not None:
         with words_tab:
             st.title("Wordcloud")
             df_wc = helper.create_wordcloud(selected_user,df)
-            fig,ax = plt.subplots(figsize=(6,4))
-            ax.imshow(df_wc)
-            st.pyplot(fig)
+            if df_wc is not None:
+                fig,ax = plt.subplots(figsize=(6,4))
+                ax.imshow(df_wc)
+                st.pyplot(fig)
+            else:
+                st.info("Not enough text to generate a word cloud for this selection. Try a different user or remove filters.")
 
             st.title('Most commmon words')
             most_common_df = helper.most_common_words(selected_user,df)
 
-            fig,ax = plt.subplots(figsize=(8,4))
-            ax.barh(most_common_df[0],most_common_df[1],color="teal")
-            plt.xticks(rotation='vertical')
-            st.pyplot(fig)
+            if not most_common_df.empty:
+                fig,ax = plt.subplots(figsize=(8,4))
+                ax.barh(most_common_df[0],most_common_df[1],color="teal")
+                plt.xticks(rotation='vertical')
+                st.pyplot(fig)
+            else:
+                st.info("Not enough words to show for this selection. Try a different user or remove filters.")
 
             st.title("Emoji Analysis")
             emoji_df = helper.emoji_helper(selected_user,df)
@@ -148,16 +165,22 @@ if uploaded_file is not None:
             col1,col2 = st.columns(2)
 
             with col1:
-                st.dataframe(emoji_df.head(20), width='stretch')
+                if not emoji_df.empty:
+                    st.dataframe(emoji_df.head(20), width='stretch')
+                else:
+                    st.info("No emojis found for this selection.")
             with col2:
-                fig,ax = plt.subplots(figsize=(6,6))
-                ax.pie(
-                    emoji_df[1].head(),
-                    labels=emoji_df[0].head(),
-                    autopct="%0.2f",
-                    textprops={'fontname': 'Segoe UI Emoji'}
-                )
-                st.pyplot(fig)
+                if not emoji_df.empty:
+                    fig,ax = plt.subplots(figsize=(6,6))
+                    ax.pie(
+                        emoji_df[1].head(),
+                        labels=emoji_df[0].head(),
+                        autopct="%0.2f",
+                        textprops={'fontname': 'Segoe UI Emoji'}
+                    )
+                    st.pyplot(fig)
+                else:
+                    st.info("No emojis to show in chart.")
 
         with advanced_tab:
             st.title("Sentiment Overview (English texts)")
@@ -178,28 +201,29 @@ if uploaded_file is not None:
 
             st.title("User Comparison")
             comp_users = [u for u in user_list if u != "Overall"]
-            if len(comp_users) >= 2:
+            if len(comp_users) >= 1:
                 col1, col2 = st.columns(2)
                 user_a = col1.selectbox("User A", comp_users, key="user_a")
-                user_b = col2.selectbox("User B", comp_users, index=1 if len(comp_users) > 1 else 0, key="user_b")
+                user_b = col2.selectbox("User B", comp_users, index=min(1, len(comp_users) - 1) if len(comp_users) > 1 else 0, key="user_b")
 
-                if user_a != user_b:
-                    a_msgs, a_words, a_media, a_links = helper.fetch_stats(user_a, df)
-                    b_msgs, b_words, b_media, b_links = helper.fetch_stats(user_b, df)
+                a_msgs, a_words, a_media, a_links = helper.fetch_stats(user_a, df)
+                b_msgs, b_words, b_media, b_links = helper.fetch_stats(user_b, df)
 
-                    comp_col1, comp_col2 = st.columns(2)
-                    with comp_col1:
-                        st.subheader(user_a)
-                        st.metric("Messages", a_msgs)
-                        st.metric("Words", a_words)
-                        st.metric("Media", a_media)
-                        st.metric("Links", a_links)
-                    with comp_col2:
-                        st.subheader(user_b)
-                        st.metric("Messages", b_msgs)
-                        st.metric("Words", b_words)
-                        st.metric("Media", b_media)
-                        st.metric("Links", b_links)
+                comp_col1, comp_col2 = st.columns(2)
+                with comp_col1:
+                    st.subheader(user_a)
+                    st.metric("Messages", a_msgs)
+                    st.metric("Words", a_words)
+                    st.metric("Media", a_media)
+                    st.metric("Links", a_links)
+                with comp_col2:
+                    st.subheader(user_b)
+                    st.metric("Messages", b_msgs)
+                    st.metric("Words", b_words)
+                    st.metric("Media", b_media)
+                    st.metric("Links", b_links)
+                if user_a == user_b:
+                    st.caption("Same user selected for both. Choose two different users to compare.")
 
             st.title("Export")
             csv_data = df.to_csv(index=False).encode("utf-8")

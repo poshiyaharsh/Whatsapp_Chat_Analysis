@@ -56,7 +56,10 @@ def create_wordcloud(selected_user,df):
 
     wc = WordCloud(width=500,height=500,min_font_size=10,background_color='white')
     temp['message'] = temp['message'].apply(remove_stop_words)
-    df_wc = wc.generate(temp['message'].str.cat(sep=" "))
+    text = temp['message'].str.cat(sep=" ").strip()
+    if not text or not any(c.isalnum() for c in text):
+        return None
+    df_wc = wc.generate(text)
     return df_wc
 
 def most_common_words(selected_user,df):
@@ -78,6 +81,8 @@ def most_common_words(selected_user,df):
                 words.append(word)
 
     most_common_df = pd.DataFrame(Counter(words).most_common(20))
+    if most_common_df.empty:
+        most_common_df = pd.DataFrame({0: [], 1: []})
     return most_common_df
 
 def emoji_helper(selected_user,df):
@@ -90,7 +95,8 @@ def emoji_helper(selected_user,df):
         emojis.extend([c for c in message if emoji.is_emoji(c)])
 
     emoji_df = pd.DataFrame(Counter(emojis).most_common(len(Counter(emojis))))
-
+    if emoji_df.empty:
+        emoji_df = pd.DataFrame({0: [], 1: []})
     return emoji_df
 
 def monthly_timeline(selected_user,df):
